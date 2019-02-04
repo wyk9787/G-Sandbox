@@ -12,7 +12,7 @@ class PtracePeek {
   PtracePeek(pid_t child_pid) : child_pid_(child_pid){};
 
   long operator[](void *addr) {
-    long ret = ptrace(PTRACE_PEEKDATA, child_pid_, addr, 0);
+    long ret = ptrace(PTRACE_PEEKTEXT, child_pid_, addr, 0);
     REQUIRE(ret != -1) << "ptrace PTRACE_PEEKDATA failed: " << strerror(errno);
     return ret;
   }

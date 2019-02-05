@@ -13,7 +13,7 @@ class PtraceSyscall {
   using handler_t = void (PtraceSyscall::*)(ull_t, ull_t, ull_t);
 
  public:
-  PtraceSyscall(pid_t child_pid, bool read = false, bool read_write = false,
+  PtraceSyscall(pid_t child_pid, std::string read = "", std::string read_write = "",
                 bool fork = false, bool exec = false);
 
   void ProcessSyscall(int sys_num, ull_t rdi, ull_t rsi, ull_t rdx);
@@ -36,8 +36,8 @@ class PtraceSyscall {
   void ChdirHandler(ull_t rdi, ull_t rsi, ull_t rdx);
 
   pid_t child_pid_;                       // child process's pid
-  bool read_;                             // able to read or not
-  bool read_write_;                       // able to read and write or not
+  std::string read_;                             // files able to read 
+  std::string read_write_;                       // files able to read and write
   bool fork_;                             // able to fork or not
   bool exec_;                             // able to exec or not
   std::vector<handler_t> handler_funcs_;  // handler functions

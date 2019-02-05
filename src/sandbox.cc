@@ -1,21 +1,45 @@
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/errno.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <sys/errno.h>
 #include <libconfig.h++>
-#include <stdlib.h>
 
 #include "log.h"
 #include "ptrace_syscall.hh"
 
-void ParseConfig() {
-  libconfig::Config cfg;
-  cfg.readFile("example.cfg");
+using namespace libconfig;
 
+static std::string read_file = "";
+static std::string read_write_file = "";
+static bool forkable = false;
+static bool execable = false;
+
+void ParseConfig(std::string config_file) {
+  Config cfg;
+
+  // Read the file. If there is an error, report it and exit.
+  try {
+    cfg.readFile(config_file.c_str());
+  } catch (const FileIOException &fioex) {
+    std::cerr << "I/O error while reading file." << std::endl;
+    exit(EXIT_FAILURE);
+  } catch (const ParseException &pex) {
+    std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
+              << " - " << pex.getError() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // Parse variables
+  // If variable name cannot be found, passed in variables witll not be changed
+  cfg.lookupValue("read", read_file);
+  cfg.lookupValue("read_write", read_write_file);
+  cfg.lookupValue("exec", forkable);
+  cfg.lookupValue("fork", execable);
 }
 
 // Trace a process with child_pid
@@ -25,6 +49,8 @@ void Trace(pid_t child_pid) {
   int last_signal = 0;
   int status;
   size_t total_times = 0;
+  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file, execable,
+                               forkable);
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
     REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)
@@ -34,8 +60,8 @@ void Trace(pid_t child_pid) {
     last_signal = 0;
 
     // Wait for the child to stop again
-    REQUIRE(waitpid(child_pid, &status, 0) == child_pid)
-        << "waitpid failed: " << strerror(errno);
+    REQUIRE(waitpid(child_pid, &status, 0) == child_pid) << "waitpid failed: "
+                                                         << strerror(errno);
 
     if (WIFEXITED(status)) {
       printf("Child exited with status %d\n", WEXITSTATUS(status));
@@ -73,12 +99,7 @@ void Trace(pid_t child_pid) {
         // The meanings of registers will depend on the system call.
         // Refer to the table at https://filippo.io/linux-syscall-table/
         printf("Program made system call %lu.\n", syscall_num);
-        /* printf("  %%rdi: 0x%llx\n", regs.rdi); */
-        /* printf("  %%rsi: 0x%llx\n", regs.rsi); */
-        /* printf("  %%rdx: 0x%llx\n", regs.rdx); */
-        printf("  ...\n");
 
-        PtraceSyscall ptrace_syscall(child_pid);
         ptrace_syscall.ProcessSyscall(syscall_num, regs.rdi, regs.rsi,
                                       regs.rdx);
       }
@@ -86,9 +107,23 @@ void Trace(pid_t child_pid) {
   }
 }
 
-int main() {
-  std::string name = cfg.lookup("name");
-  std::cout << name << std::endl;
+int main(int argc, char **argv) {
+  if (argc < 3) {
+    std::cout << "Usage: ./sandbox (config_file) -- program arg1 arg2 ..."
+              << std::endl;
+    exit(1);
+  }
+
+  char **program;
+  if (std::string(argv[1]) == "--") {
+    // Without config file
+    program = &argv[2];
+  } else {
+    // With config file
+    std::string config_file(argv[1]);
+    ParseConfig(config_file);
+    program = &argv[3];
+  }
 
   // Call fork to create a child process
   pid_t child_pid = fork();
@@ -96,17 +131,14 @@ int main() {
 
   // If this is the child, ask to be traced
   if (child_pid == 0) {
-    REQUIRE(ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1)
-        << "ptrace failed: " << strerror(errno);
+    REQUIRE(ptrace(PTRACE_TRACEME, 0, NULL, NULL) != -1) << "ptrace failed: "
+                                                         << strerror(errno);
 
     // Stop the process so the tracer can catch it
     raise(SIGSTOP);
 
-    // TODO: Remove this after testing
-    if (execlp("ls", "ls", NULL)) {
-      perror("execlp failed");
-      exit(2);
-    }
+    REQUIRE(execvp(program[0], program)) << "execvp failed: "
+                                         << strerror(errno);
   } else {
     // Wait for the child to stop
     int status;
@@ -115,9 +147,6 @@ int main() {
       result = waitpid(child_pid, &status, 0);
       REQUIRE(result == child_pid) << "waitpid failed: " << strerror(errno);
     } while (!WIFSTOPPED(status));
-
-    // We are now attached to the child process
-    printf("Attached!\n");
 
     Trace(child_pid);
   }

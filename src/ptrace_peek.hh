@@ -2,6 +2,7 @@
 #define PTRACE_PEEK_HH
 
 #include <string.h>
+#include <sys/errno.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 

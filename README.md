@@ -1,6 +1,6 @@
 # G-Sandbox
 
-# Required library
+## Required library
 
 * [libconfig](https://github.com/hyperrealm/libconfig): C/C++ library for processing configuration files 
 
@@ -16,7 +16,7 @@
    
    `sudo apt-get install pkg-config`
 
-# Installation 
+## Installation 
 
 ```
 export LD_LIBRARY_PATH=/usr/local/lib

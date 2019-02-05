@@ -12,6 +12,12 @@
 #include "log.h"
 #include "ptrace_syscall.hh"
 
+void ParseConfig() {
+  libconfig::Config cfg;
+  cfg.readFile("example.cfg");
+
+}
+
 // Trace a process with child_pid
 void Trace(pid_t child_pid) {
   // Now repeatedly resume and trace the program
@@ -81,8 +87,6 @@ void Trace(pid_t child_pid) {
 }
 
 int main() {
-  libconfig::Config cfg;
-  cfg.readFile("example.cfg");
   std::string name = cfg.lookup("name");
   std::cout << name << std::endl;
 

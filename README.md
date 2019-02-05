@@ -2,8 +2,19 @@
 
 # Required library
 
-pkg-config (tool to find right library path for libconfig): `sudo apt-get
-install pkg-config`
+* [libconfig](https://github.com/hyperrealm/libconfig): C/C++ library for processing configuration files 
+
+   ```cpp
+   git clone https://github.com/hyperrealm/libconfig
+   cd libconfig
+   ./configure
+   make         # may require sudo
+   make install # may require sudo
+   ```
+
+* pkg-config: tool to find right library path for libconfig
+   
+   `sudo apt-get install pkg-config`
 
 # Installation 
 

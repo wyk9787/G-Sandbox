@@ -19,16 +19,29 @@ class PtraceSyscall {
   void ProcessSyscall(int sys_num, ull_t rdi, ull_t rsi, ull_t rdx);
 
  private:
-  void ReadHandler(ull_t rdi, ull_t rsi, ull_t rdx);
-  void DefaultHandler(ull_t, ull_t, ull_t);
+  void DefaultHandler(ull_t, ull_t, ull_t) {}
 
+  void ReadHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void WiteHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void OpenHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void StatHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void FStatHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void LStatHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void SocketHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void ForkHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void CloneHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void VForkHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void ExecveHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void TruncateHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+  void ChdirHandler(ull_t rdi, ull_t rsi, ull_t rdx);
+
+  pid_t child_pid_;                       // child process's pid
   bool read_;                             // able to read or not
   bool read_write_;                       // able to read and write or not
   bool fork_;                             // able to fork or not
   bool exec_;                             // able to exec or not
   std::vector<handler_t> handler_funcs_;  // handler functions
-  std::unique_ptr<PtracePeek>
-      ptrace_peek_;  // a helper to peek into tracee's memory
+  PtracePeek ptrace_peek_;  // a helper to peek into tracee's memory
 };
 
 #endif  // PTRACE_SYSCALL_HH

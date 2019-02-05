@@ -1,17 +1,20 @@
 #include "ptrace_syscall.hh"
 
+#include <signal.h>
+#include <sys/syscall.h>
 #include <iostream>
 
 PtraceSyscall::PtraceSyscall(pid_t child_pid, bool read, bool read_write,
                              bool fork, bool exec)
-    : read_(read),
+    : child_pid_(child_pid),
+      read_(read),
       read_write_(read_write),
       fork_(fork),
       exec_(exec),
-      ptrace_peek_(std::make_unique<PtracePeek>(child_pid)) {
-  handler_funcs_.insert(handler_funcs_.begin(), 300,
+      ptrace_peek_(child_pid) {
+  handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
-  handler_funcs_.insert(handler_funcs_.begin(), &PtraceSyscall::ReadHandler);
+  handler_funcs_[SYS_read] = &PtraceSyscall::ReadHandler;
 }
 
 void PtraceSyscall::ProcessSyscall(int sys_num, ull_t rdi, ull_t rsi,
@@ -26,11 +29,11 @@ void PtraceSyscall::ReadHandler(ull_t rdi, ull_t rsi, ull_t rdx) {
     std::cout << "The program calls read(" << rdi << ", " << rsi << ", " << rdx
               << ")" << std::endl;
     std::cout << "It is about to read "
-              << ptrace_peek_[reinterpret_cast<void *>(rsi)]
+              << ptrace_peek_.get(reinterpret_cast<void *>(rsi), rdx)
+              << std::endl;
+    REQUIRE(kill(child_pid_, SIGKILL) == 0)
+        << "kill failed: " << strerror(errno);
+    exit(1);
   }
-}
-
-void PtraceSyscall::DefaultHandler(ull_t, ull_t, ull_t) {
-  std::cout << "Entering default handler\n";
 }
 

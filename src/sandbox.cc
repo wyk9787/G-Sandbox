@@ -15,6 +15,7 @@ void Trace(pid_t child_pid) {
   bool running = true;
   int last_signal = 0;
   int status;
+  size_t total_times = 0;
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
     REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)
@@ -39,6 +40,18 @@ void Trace(pid_t child_pid) {
 
       // If the signal was a SIGTRAP, we stopped because of a system call
       if (last_signal == SIGTRAP) {
+        // We do not want to send SIGTRAP again to the tracee
+        last_signal = 0;
+
+        // Keep track of we are before the syscall or after the syscall
+        // In order to avoid over flow, we mod 2
+        total_times = (total_times + 1) % 2;
+
+        // This is the second time we see this system call (after the execution)
+        // We ignore it
+        if (total_times % 2 == 0) {
+          continue;
+        }
         // Read register state from the child process
         struct user_regs_struct regs;
         REQUIRE(ptrace(PTRACE_GETREGS, child_pid, NULL, &regs) != -1)
@@ -51,14 +64,14 @@ void Trace(pid_t child_pid) {
         // The meanings of registers will depend on the system call.
         // Refer to the table at https://filippo.io/linux-syscall-table/
         printf("Program made system call %lu.\n", syscall_num);
-        printf("  %%rdi: 0x%llx\n", regs.rdi);
-        printf("  %%rsi: 0x%llx\n", regs.rsi);
-        printf("  %%rdx: 0x%llx\n", regs.rdx);
+        /* printf("  %%rdi: 0x%llx\n", regs.rdi); */
+        /* printf("  %%rsi: 0x%llx\n", regs.rsi); */
+        /* printf("  %%rdx: 0x%llx\n", regs.rdx); */
         printf("  ...\n");
 
-        last_signal = 0;
-        PtraceSyscall ptrace_syscall(syscall_num);
-        ptrace_syscall.ProcessSyscall();
+        PtraceSyscall ptrace_syscall(child_pid);
+        ptrace_syscall.ProcessSyscall(syscall_num, regs.rdi, regs.rsi,
+                                      regs.rdx);
       }
     }
   }

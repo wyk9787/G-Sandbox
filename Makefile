@@ -8,18 +8,18 @@ SRC          := $(SRC_DIR)/sandbox.cc $(SRC_DIR)/ptrace_syscall.cc
 OBJECTS      := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 TEST_MCF		 := $(TEST_DIR)/mcf/mcf_base.clang $(TEST_DIR)/mcf/train_inp.in	
 
-.PHONY: all test build clean 
+.PHONY: all test clean 
 	
 all: $(TARGET)
 
 $(OBJ_DIR)/%.o: %.cc
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $< 
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(CLIBS) -o $(TARGET) $(OBJECTS)
-
+	$(CXX) $(CXXFLAGS) `pkg-config --cflags libconfig++` \
+		-o $(TARGET) $(OBJECTS) `pkg-config --libs libconfig++`
 
 clean:
 	-@rm -rf $(TARGET)

@@ -5,6 +5,9 @@
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/errno.h>
+#include <libconfig.h++>
+#include <stdlib.h>
 
 #include "log.h"
 #include "ptrace_syscall.hh"
@@ -78,6 +81,11 @@ void Trace(pid_t child_pid) {
 }
 
 int main() {
+  libconfig::Config cfg;
+  cfg.readFile("example.cfg");
+  std::string name = cfg.lookup("name");
+  std::cout << name << std::endl;
+
   // Call fork to create a child process
   pid_t child_pid = fork();
   REQUIRE(child_pid != -1) << "fork failed: " << strerror(errno);

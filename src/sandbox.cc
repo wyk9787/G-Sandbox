@@ -99,9 +99,10 @@ void Trace(pid_t child_pid) {
         // The meanings of registers will depend on the system call.
         // Refer to the table at https://filippo.io/linux-syscall-table/
         printf("Program made system call %lu.\n", syscall_num);
+        std::vector<unsigned long long> args = {regs.rdi, regs.rsi, regs.rdx,
+                                                regs.r10, regs.r8,  regs.r9};
 
-        ptrace_syscall.ProcessSyscall(syscall_num, regs.rdi, regs.rsi,
-                                      regs.rdx);
+        ptrace_syscall.ProcessSyscall(syscall_num, args);
       }
     }
   }

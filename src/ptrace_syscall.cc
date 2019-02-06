@@ -18,21 +18,23 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
       ptrace_peek_(child_pid) {
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
-  handler_funcs_[SYS_read] = &PtraceSyscall::ReadHandler;
+  handler_funcs_[SYS_open] = &PtraceSyscall::OpenHandler;
 }
 
-void PtraceSyscall::ProcessSyscall(int sys_num, ull_t rdi, ull_t rsi,
-                                   ull_t rdx) {
-  (this->*handler_funcs_[sys_num])(rdi, rsi, rdx);
+void PtraceSyscall::ProcessSyscall(int sys_num,
+                                   const std::vector<ull_t> &args) {
+  (this->*handler_funcs_[sys_num])(args);
 }
 
-void PtraceSyscall::ReadHandler(ull_t rdi, ull_t rsi, ull_t rdx) {
+void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  ull_t rdx = args[RDX];
   if (read_.empty() && read_write_.empty()) {
-    std::cout << "The program calls read(" << rdi << ", " << rsi << ", " << rdx
+    std::cout << "The program calls open(" << rdi << ", " << rsi << ", " << rdx
               << ")" << std::endl;
     std::cout << "It is about to read "
-              << ptrace_peek_.get(reinterpret_cast<void *>(rsi), rdx)
-              << std::endl;
+              << ptrace_peek_[reinterpret_cast<void *>(rdi)] << std::endl;
     REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: "
                                             << strerror(errno);
     exit(1);

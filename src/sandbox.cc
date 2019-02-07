@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <libconfig.h++>
 
+#include "file_detector.hh"
 #include "log.h"
 #include "ptrace_syscall.hh"
 
@@ -51,6 +52,9 @@ void Trace(pid_t child_pid) {
   size_t total_times = 0;
   PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file, execable,
                                forkable);
+  FileDetector read_file_detector(read_file);
+  FileDetector read_write_file_detector(read_write_file);
+
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
     REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)

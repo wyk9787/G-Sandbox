@@ -1,9 +1,12 @@
 #include "ptrace_syscall.hh"
 
+#include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <iostream>
 
 using std::string;
@@ -11,8 +14,8 @@ using std::string;
 PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
                              bool fork, bool exec)
     : child_pid_(child_pid),
-      read_(read),
-      read_write_(read_write),
+      read_file_detector_(read),
+      read_write_file_detector_(read_write),
       fork_(fork),
       exec_(exec),
       ptrace_peek_(child_pid) {
@@ -30,17 +33,38 @@ void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
   ull_t rdx = args[RDX];
-  if (read_.empty() && read_write_.empty()) {
-    std::cout << "The program calls open(" << rdi << ", " << rsi << ", " << rdx
-              << ")" << std::endl;
-    std::cout << "It is about to read "
-              << ptrace_peek_[reinterpret_cast<void *>(rdi)] << std::endl;
+  std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
+  std::cout << "The program calls open(\"" << file << "\", " << rsi << ", "
+            << rdx << ")" << std::endl;
+
+  bool allow_read = read_file_detector_.IsAllowed(file);
+  bool allow_read_write = read_write_file_detector_.IsAllowed(file);
+
+  if (rsi & O_WRONLY) {
+    if (allow_read_write) {
+      INFO << "The file is granted write permission";
+    }
     REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: "
                                             << strerror(errno);
-    exit(1);
-  } else {
-    // TODO: add permission control
+    FATAL << "The file is not granted write permission";
+  }
+
+  if (rsi & O_RDWR) {
+    if (allow_read_write) {
+      INFO << "The file is granted read-write permission";
+    }
+    REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: "
+                                            << strerror(errno);
+    FATAL << "The file is not granted read-write permission";
+  }
+
+  if (read_file_detector_.IsAllowed(file) ||
+      read_write_file_detector_.IsAllowed(file)) {
+    INFO << "The file is granted read permission";
     return;
   }
+
+  REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: " << strerror(errno);
+  FATAL << "The file is not granted read permission";
 }
 

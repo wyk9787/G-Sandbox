@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "file_detector.hh"
 #include "ptrace_peek.hh"
 
 #define RDI 0
@@ -38,12 +39,14 @@ class PtraceSyscall {
   /* void TruncateHandler(std::vector<ull_t> args); */
   /* void ChdirHandler(std::vector<ull_t> args); */
 
-  pid_t child_pid_;                       // child process's pid
-  std::string read_;                      // files able to read
-  std::string read_write_;                // files able to read and write
-  bool fork_;                             // able to fork or not
-  bool exec_;                             // able to exec or not
-  std::vector<handler_t> handler_funcs_;  // handler functions
+  pid_t child_pid_;  // child process's pid
+  FileDetector
+      read_file_detector_;  // a file detector to decide read permission
+  FileDetector read_write_file_detector_;  // a file detector to decide read and
+                                           // write permission
+  bool fork_;                              // able to fork or not
+  bool exec_;                              // able to exec or not
+  std::vector<handler_t> handler_funcs_;   // handler functions
   PtracePeek ptrace_peek_;  // a helper to peek into tracee's memory
 };
 

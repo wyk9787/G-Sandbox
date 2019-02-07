@@ -12,6 +12,8 @@
 #define RDI 0
 #define RSI 1
 #define RDX 2
+#define R10 3
+#define R8 4
 
 class PtraceSyscall {
   using ull_t = unsigned long long;
@@ -28,16 +30,33 @@ class PtraceSyscall {
  private:
   void DefaultHandler(const std::vector<ull_t>& args) const {}
 
+  void KillChild(std::string exit_message) const;
+
+  void FileReadPermissionCheck(const std::string& file) const;
+  void FileReadWritePermissionCheck(const std::string& file) const;
+
   void OpenHandler(const std::vector<ull_t>& args) const;
   void StatHandler(const std::vector<ull_t>& args) const;
-  void LStatHandler(std::vector<ull_t> args);
-  /* void SocketHandler(std::vector<ull_t> args); */
-  /* void ForkHandler(std::vector<ull_t> args); */
-  /* void CloneHandler(std::vector<ull_t> args); */
-  /* void VForkHandler(std::vector<ull_t> args); */
-  /* void ExecveHandler(std::vector<ull_t> args); */
-  /* void TruncateHandler(std::vector<ull_t> args); */
-  /* void ChdirHandler(std::vector<ull_t> args); */
+  void LStatHandler(const std::vector<ull_t>& args) const;
+  void SocketHandler(const std::vector<ull_t>& args) const;
+  void CloneHandler(const std::vector<ull_t>& args) const;
+  void ForkHandler(const std::vector<ull_t>& args) const;
+  void VForkHandler(const std::vector<ull_t>& args) const;
+  void ExecveHandler(const std::vector<ull_t>& args) const;
+  void TruncateHandler(const std::vector<ull_t>& args) const;
+  void GetcwdHandler(const std::vector<ull_t>& args) const;
+  void ChdirHandler(const std::vector<ull_t>& args) const;
+  void RenameHandler(const std::vector<ull_t>& args) const;
+  void MkdirHandler(const std::vector<ull_t>& args) const;
+  void RmdirHandler(const std::vector<ull_t>& args) const;
+  void CreateHandler(const std::vector<ull_t>& args) const;
+  void LinkHandler(const std::vector<ull_t>& args) const;
+  void UnlinkHandler(const std::vector<ull_t>& args) const;
+  void SymlinkHandler(const std::vector<ull_t>& args) const;
+  void ReadlinkHandler(const std::vector<ull_t>& args) const;
+  void ChmodHandler(const std::vector<ull_t>& args) const;
+  void ChownHandler(const std::vector<ull_t>& args) const;
+  void LChownHandler(const std::vector<ull_t>& args) const;
 
   pid_t child_pid_;  // child process's pid
   FileDetector

@@ -12,7 +12,7 @@
 class FileDetector {
  public:
   FileDetector(std::string whitelist) : whitelist_(whitelist) {
-    char *tmp_cur_path;
+    char* tmp_cur_path;
     REQUIRE((tmp_cur_path = get_current_dir_name()) != NULL)
         << "get_current_dir_name failed: " << strerror(errno);
     cur_path_ = std::string(tmp_cur_path) + "/";

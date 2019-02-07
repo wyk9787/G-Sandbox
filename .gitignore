@@ -33,3 +33,4 @@
 
 # Vim cache
 .*.swp
+.*.swo

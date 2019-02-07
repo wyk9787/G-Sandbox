@@ -19,7 +19,7 @@ class FileDetector {
     free(tmp_cur_path);
   }
 
-  bool IsAllowed(std::string file) {
+  bool IsAllowed(std::string file) const {
     // If there is no allowed directory, then always false
     if (whitelist_.empty()) return false;
 

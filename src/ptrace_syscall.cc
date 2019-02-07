@@ -22,6 +22,7 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
   handler_funcs_[SYS_open] = &PtraceSyscall::OpenHandler;
+  handler_funcs_[SYS_stat] = &PtraceSyscall::StatHandler;
 }
 
 void PtraceSyscall::ProcessSyscall(int sys_num,
@@ -29,13 +30,13 @@ void PtraceSyscall::ProcessSyscall(int sys_num,
   (this->*handler_funcs_[sys_num])(args);
 }
 
-void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) {
+void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
   ull_t rdx = args[RDX];
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
-  std::cout << "The program calls open(\"" << file << "\", " << rsi << ", "
-            << rdx << ")" << std::endl;
+  INFO << "The program calls open(\"" << file << "\", " << rsi << ", " << rdx
+       << ")";
 
   bool allow_read = read_file_detector_.IsAllowed(file);
   bool allow_read_write = read_write_file_detector_.IsAllowed(file);
@@ -58,13 +59,28 @@ void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) {
     FATAL << "The file is not granted read-write permission";
   }
 
-  if (read_file_detector_.IsAllowed(file) ||
-      read_write_file_detector_.IsAllowed(file)) {
+  if (allow_read || allow_read_write) {
     INFO << "The file is granted read permission";
     return;
   }
 
   REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: " << strerror(errno);
   FATAL << "The file is not granted read permission";
+}
+
+void PtraceSyscall::StatHandler(const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
+  INFO << "The program calls stat(\"" << file << "\", " << rsi << ")";
+  if (read_file_detector_.IsAllowed(file) ||
+      read_write_file_detector_.IsAllowed(file)) {
+    INFO << "The file is granted read permission";
+
+  } else {
+    REQUIRE(kill(child_pid_, SIGKILL) == 0) << "kill failed: "
+                                            << strerror(errno);
+    FATAL << "The file is not granted read permission";
+  }
 }
 

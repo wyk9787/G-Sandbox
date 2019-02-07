@@ -15,7 +15,8 @@
 
 class PtraceSyscall {
   using ull_t = unsigned long long;
-  using handler_t = void (PtraceSyscall::*)(const std::vector<ull_t>& args);
+  using handler_t =
+      void (PtraceSyscall::*)(const std::vector<ull_t>& args) const;
 
  public:
   PtraceSyscall(pid_t child_pid, std::string read = "",
@@ -25,12 +26,11 @@ class PtraceSyscall {
   void ProcessSyscall(int sys_num, const std::vector<ull_t>& args);
 
  private:
-  void DefaultHandler(const std::vector<ull_t>& args) {}
+  void DefaultHandler(const std::vector<ull_t>& args) const {}
 
-  void OpenHandler(const std::vector<ull_t>& args);
-  /* void StatHandler(std::vector<ull_t> args); */
-  /* void FStatHandler(std::vector<ull_t> args); */
-  /* void LStatHandler(std::vector<ull_t> args); */
+  void OpenHandler(const std::vector<ull_t>& args) const;
+  void StatHandler(const std::vector<ull_t>& args) const;
+  void LStatHandler(std::vector<ull_t> args);
   /* void SocketHandler(std::vector<ull_t> args); */
   /* void ForkHandler(std::vector<ull_t> args); */
   /* void CloneHandler(std::vector<ull_t> args); */

@@ -57,6 +57,7 @@ void Trace(pid_t child_pid) {
 
   REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEEXEC) != -1)
       << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
+  bool done_first_exec = false;
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
     REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)
@@ -77,6 +78,14 @@ void Trace(pid_t child_pid) {
       running = false;
     } else if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
       // The program just runs execv
+
+      // If the tracee hasn't run the first exec that execs the actual program
+      // yet
+      if (!done_first_exec) {
+        done_first_exec = true;
+        last_signal = 0;
+        continue;
+      }
       if (execable) {
         last_signal = 0;
       } else {

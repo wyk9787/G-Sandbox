@@ -22,9 +22,27 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
   handler_funcs_[SYS_open] = &PtraceSyscall::OpenHandler;
-  handler_funcs_[SYS_newstat] = &PtraceSyscall::StatHandler;
-  handler_funcs_[SYS_newlstat] = &PtraceSyscall::LStatHandler;
+  handler_funcs_[SYS_stat] = &PtraceSyscall::StatHandler;
+  handler_funcs_[SYS_lstat] = &PtraceSyscall::LStatHandler;
   handler_funcs_[SYS_socket] = &PtraceSyscall::SocketHandler;
+  handler_funcs_[SYS_clone] = &PtraceSyscall::CloneHandler;
+  handler_funcs_[SYS_fork] = &PtraceSyscall::ForkHandler;
+  handler_funcs_[SYS_vfork] = &PtraceSyscall::VForkHandler;
+  handler_funcs_[SYS_execve] = &PtraceSyscall::ExecveHandler;
+  handler_funcs_[SYS_truncate] = &PtraceSyscall::TruncateHandler;
+  handler_funcs_[SYS_getcwd] = &PtraceSyscall::GetcwdHandler;
+  handler_funcs_[SYS_chdir] = &PtraceSyscall::ChdirHandler;
+  handler_funcs_[SYS_rename] = &PtraceSyscall::RenameHandler;
+  handler_funcs_[SYS_mkdir] = &PtraceSyscall::MkdirHandler;
+  handler_funcs_[SYS_rmdir] = &PtraceSyscall::RmdirHandler;
+  handler_funcs_[SYS_creat] = &PtraceSyscall::CreatHandler;
+  handler_funcs_[SYS_link] = &PtraceSyscall::LinkHandler;
+  handler_funcs_[SYS_unlink] = &PtraceSyscall::UnlinkHandler;
+  handler_funcs_[SYS_symlink] = &PtraceSyscall::SymlinkHandler;
+  handler_funcs_[SYS_readlink] = &PtraceSyscall::ReadlinkHandler;
+  handler_funcs_[SYS_chmod] = &PtraceSyscall::ChmodHandler;
+  handler_funcs_[SYS_chown] = &PtraceSyscall::ChownHandler;
+  handler_funcs_[SYS_lchown] = &PtraceSyscall::LChownHandler;
 }
 
 void PtraceSyscall::ProcessSyscall(int sys_num,
@@ -126,8 +144,6 @@ void PtraceSyscall::ExecveHandler(const std::vector<ull_t> &args) const {
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls execve(" << file << ", " << rsi << ", " << rdx
        << ")";
-  if (exec_) return;
-  KillChild("The program is not allowed to call exec");
 }
 
 void PtraceSyscall::TruncateHandler(const std::vector<ull_t> &args) const {
@@ -181,7 +197,7 @@ void PtraceSyscall::RmdirHandler(const std::vector<ull_t> &args) const {
   FileReadWritePermissionCheck(directory_name);
 }
 
-void PtraceSyscall::CreateHandler(const std::vector<ull_t> &args) const {
+void PtraceSyscall::CreatHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];

@@ -55,6 +55,8 @@ void Trace(pid_t child_pid) {
   FileDetector read_file_detector(read_file);
   FileDetector read_write_file_detector(read_write_file);
 
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEEXEC) != -1)
+      << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
     REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)
@@ -73,6 +75,13 @@ void Trace(pid_t child_pid) {
     } else if (WIFSIGNALED(status)) {
       printf("Child terminated with signal %d\n", WTERMSIG(status));
       running = false;
+    } else if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
+      // The program just runs execv
+      if (execable) {
+        last_signal = 0;
+      } else {
+        ptrace_syscall.KillChild("The program is not allowed to exec");
+      }
     } else if (WIFSTOPPED(status)) {
       // Get the signal delivered to the child
       last_signal = WSTOPSIG(status);

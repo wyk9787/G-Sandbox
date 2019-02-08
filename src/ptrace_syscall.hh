@@ -26,11 +26,10 @@ class PtraceSyscall {
                 bool exec = false);
 
   void ProcessSyscall(int sys_num, const std::vector<ull_t>& args);
+  void KillChild(std::string exit_message) const;
 
  private:
   void DefaultHandler(const std::vector<ull_t>& args) const {}
-
-  void KillChild(std::string exit_message) const;
 
   void FileReadPermissionCheck(const std::string& file) const;
   void FileReadWritePermissionCheck(const std::string& file) const;
@@ -49,7 +48,7 @@ class PtraceSyscall {
   void RenameHandler(const std::vector<ull_t>& args) const;
   void MkdirHandler(const std::vector<ull_t>& args) const;
   void RmdirHandler(const std::vector<ull_t>& args) const;
-  void CreateHandler(const std::vector<ull_t>& args) const;
+  void CreatHandler(const std::vector<ull_t>& args) const;
   void LinkHandler(const std::vector<ull_t>& args) const;
   void UnlinkHandler(const std::vector<ull_t>& args) const;
   void SymlinkHandler(const std::vector<ull_t>& args) const;

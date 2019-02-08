@@ -13,6 +13,11 @@
 #include "log.h"
 #include "ptrace_syscall.hh"
 
+#define PTRACE_EXEC_STATUS (SIGTRAP | (PTRACE_EVENT_EXEC << 8))
+#define PTRACE_CLONE_STATUS (SIGTRAP | (PTRACE_EVENT_CLONE << 8))
+#define PTRACE_FORK_STATUS (SIGTRAP | (PTRACE_EVENT_FORK << 8))
+#define PTRACE_VFORK_STATUS (SIGTRAP | (PTRACE_EVENT_VFORK << 8))
+
 using namespace libconfig;
 
 static std::string read_file = "";
@@ -55,8 +60,16 @@ void Trace(pid_t child_pid) {
   FileDetector read_file_detector(read_file);
   FileDetector read_write_file_detector(read_write_file);
 
+  // Set options for ptrace to stop at exec(), clone(), fork(), and vfork()
   REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEEXEC) != -1)
-      << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
+      << "ptrace PTRACE_O_TRACEEXEC failed: " << strerror(errno);
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACECLONE) != -1)
+      << "ptrace PTRACE_O_TRACECLONE failed: " << strerror(errno);
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEFORK) != -1)
+      << "ptrace PTRACE_O_TRACEFORK failed: " << strerror(errno);
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEVFORK) != -1)
+      << "ptrace PTRACE_O_TRACEVFORK failed: " << strerror(errno);
+
   bool done_first_exec = false;
   while (running) {
     // Continue the process, delivering the last signal we received (if any)
@@ -76,7 +89,7 @@ void Trace(pid_t child_pid) {
     } else if (WIFSIGNALED(status)) {
       printf("Child terminated with signal %d\n", WTERMSIG(status));
       running = false;
-    } else if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
+    } else if (status >> 8 == PTRACE_EXEC_STATUS) {
       // The program just runs execv
 
       // If the tracee hasn't run the first exec that execs the actual program
@@ -86,10 +99,22 @@ void Trace(pid_t child_pid) {
         last_signal = 0;
         continue;
       }
+
+      // TODO: Read permission?
       if (execable) {
         last_signal = 0;
       } else {
         ptrace_syscall.KillChild("The program is not allowed to exec");
+      }
+    } else if (status >> 8 == PTRACE_FORK_STATUS ||
+               status >> 8 == PTRACE_CLONE_STATUS ||
+               status >> 8 == PTRACE_VFORK_STATUS) {
+      // The program just called clone
+
+      if (forkable) {
+        last_signal = 0;
+      } else {
+        ptrace_syscall.KillChild("The program is not allowed to fork");
       }
     } else if (WIFSTOPPED(status)) {
       // Get the signal delivered to the child

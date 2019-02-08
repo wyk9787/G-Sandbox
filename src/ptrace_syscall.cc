@@ -11,13 +11,10 @@
 
 using std::string;
 
-PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
-                             bool fork, bool exec)
+PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write)
     : child_pid_(child_pid),
       read_file_detector_(read),
       read_write_file_detector_(read_write),
-      fork_(fork),
-      exec_(exec),
       ptrace_peek_(child_pid) {
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
@@ -47,6 +44,7 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
 
 void PtraceSyscall::ProcessSyscall(int sys_num,
                                    const std::vector<ull_t> &args) {
+  INFO << " The program made syscall " << sys_num;
   (this->*handler_funcs_[sys_num])(args);
 }
 
@@ -117,30 +115,22 @@ void PtraceSyscall::CloneHandler(const std::vector<ull_t> &args) const {
   ull_t rdx = args[RDX];
   ull_t r10 = args[R10];
   ull_t r8 = args[R8];
-  // TODO: Peek at other parameters?
   INFO << "The program calls clone(" << rdi << ", " << rsi << ", " << rdx
        << ", " << r10 << ", " << r8 << ")";
-  if (fork_) return;
-  KillChild("The program is not allowed to fork or clone");
 }
 
 void PtraceSyscall::ForkHandler(const std::vector<ull_t> &args) const {
   INFO << "The program calls fork()";
-  if (fork_) return;
-  KillChild("The program is not allowed to fork or clone");
 }
 
 void PtraceSyscall::VForkHandler(const std::vector<ull_t> &args) const {
   INFO << "The program calls vfork()";
-  if (fork_) return;
-  KillChild("The program is not allowed to fork or clone");
 }
 
 void PtraceSyscall::ExecveHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
   ull_t rdx = args[RDX];
-  // TODO: Peek at other parameters?
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls execve(" << file << ", " << rsi << ", " << rdx
        << ")";
@@ -166,8 +156,7 @@ void PtraceSyscall::ChdirHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls chdir(" << file << ")";
-  // TODO: What about having write permission
-  KillChild("The program is not allowed to change directory");
+  FileReadPermissionCheck(file);
 }
 
 void PtraceSyscall::RenameHandler(const std::vector<ull_t> &args) const {
@@ -177,7 +166,6 @@ void PtraceSyscall::RenameHandler(const std::vector<ull_t> &args) const {
   std::string new_name = ptrace_peek_[reinterpret_cast<void *>(rsi)];
   INFO << "The program calls rename(" << original_name << ", " << new_name
        << ")";
-  // TODO: What about having write permission
   FileReadWritePermissionCheck(original_name);
   FileReadWritePermissionCheck(new_name);
 }
@@ -225,11 +213,13 @@ void PtraceSyscall::UnlinkHandler(const std::vector<ull_t> &args) const {
 void PtraceSyscall::SymlinkHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
-  std::string original_path = ptrace_peek_[reinterpret_cast<void *>(rdi)];
-  std::string new_path = ptrace_peek_[reinterpret_cast<void *>(rsi)];
-  INFO << "The program calls symlink(" << original_path << ", " << new_path
-       << ")";
-  KillChild("The program is not allowed to create symbolic link");
+  std::string path1 = ptrace_peek_[reinterpret_cast<void *>(rdi)];
+  std::string path2 = ptrace_peek_[reinterpret_cast<void *>(rsi)];
+  INFO << "The program calls symlink(" << path1 << ", " << path2 << ")";
+  // The symbolic link is linked from path2 to path1
+  // Thus, we need write permission in path2 and read permission in path1
+  FileReadWritePermissionCheck(path2);
+  FileReadPermissionCheck(path1);
 }
 
 void PtraceSyscall::ReadlinkHandler(const std::vector<ull_t> &args) const {
@@ -247,7 +237,7 @@ void PtraceSyscall::ChmodHandler(const std::vector<ull_t> &args) const {
   ull_t rsi = args[RSI];
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls chmod(" << file << ", " << rsi << ")";
-  KillChild("The program is not allowed to change permission of the file");
+  FileReadWritePermissionCheck(file);
 }
 
 void PtraceSyscall::ChownHandler(const std::vector<ull_t> &args) const {
@@ -257,8 +247,7 @@ void PtraceSyscall::ChownHandler(const std::vector<ull_t> &args) const {
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls chown(" << file << ", " << rsi << ", " << rdx
        << ")";
-  KillChild(
-      "The program is not allowed to change owner or the group of the file");
+  FileReadWritePermissionCheck(file);
 }
 
 void PtraceSyscall::LChownHandler(const std::vector<ull_t> &args) const {
@@ -268,6 +257,12 @@ void PtraceSyscall::LChownHandler(const std::vector<ull_t> &args) const {
   std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
   INFO << "The program calls lchown(" << file << ", " << rsi << ", " << rdx
        << ")";
-  KillChild(
-      "The program is not allowed to change owner or the group of the file");
+  FileReadWritePermissionCheck(file);
+}
+
+void PtraceSyscall::UmaskHandler(const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  INFO << "The program calls umask(" << rdi << ")";
+  // TODO: Check this or not? It's related to the process
+  /* FileReadWritePermissionCheck(file); */
 }

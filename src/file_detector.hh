@@ -11,12 +11,16 @@
 
 class FileDetector {
  public:
-  FileDetector(std::string whitelist) : whitelist_(whitelist) {
-    char* tmp_cur_path;
-    REQUIRE((tmp_cur_path = get_current_dir_name()) != NULL)
-        << "get_current_dir_name failed: " << strerror(errno);
-    cur_path_ = std::string(tmp_cur_path) + "/";
-    free(tmp_cur_path);
+  FileDetector(std::string whitelist) {
+    char* tmp;
+    REQUIRE((tmp = realpath(".", NULL)) != NULL) << "realpath() failed: "
+                                                 << strerror(errno);
+    cur_path_ = std::string(tmp);
+
+    REQUIRE((tmp = realpath(whitelist.c_str(), NULL)) != NULL)
+        << "realpath() failed: " << strerror(errno);
+    whitelist_ = std::string(tmp);
+    free(tmp);
   }
 
   bool IsAllowed(std::string file) const {
@@ -24,13 +28,18 @@ class FileDetector {
     if (whitelist_.empty()) return false;
 
     // If file is a relative path, make it absolute
-    if (file[0] == '.' || file[0] != '/') {
+    if (file[0] == '.' || file[0] != '/' || file[0] == '.') {
       file = cur_path_ + file;
     }
 
+    char* tmp_file;
+    REQUIRE((tmp_file = realpath(file.c_str(), NULL)) != NULL)
+        << "realpath() failed: " << strerror(errno);
+    std::string real_path(tmp_file);
+
     // If file is a subdirectory of whitelist_, then whitelist_ must be a
     // substring of file
-    if (file.find(whitelist_) != std::string::npos) {
+    if (real_path.find(whitelist_) != std::string::npos) {
       return true;
     } else {
       return false;

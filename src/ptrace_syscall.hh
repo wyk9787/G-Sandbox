@@ -21,9 +21,7 @@ class PtraceSyscall {
       void (PtraceSyscall::*)(const std::vector<ull_t>& args) const;
 
  public:
-  PtraceSyscall(pid_t child_pid, std::string read = "",
-                std::string read_write = "", bool fork = false,
-                bool exec = false);
+  PtraceSyscall(pid_t child_pid, std::string read, std::string read_write);
 
   void ProcessSyscall(int sys_num, const std::vector<ull_t>& args);
   void KillChild(std::string exit_message) const;
@@ -56,14 +54,13 @@ class PtraceSyscall {
   void ChmodHandler(const std::vector<ull_t>& args) const;
   void ChownHandler(const std::vector<ull_t>& args) const;
   void LChownHandler(const std::vector<ull_t>& args) const;
+  void UmaskHandler(const std::vector<ull_t>& args) const;
 
   pid_t child_pid_;  // child process's pid
   FileDetector
       read_file_detector_;  // a file detector to decide read permission
   FileDetector read_write_file_detector_;  // a file detector to decide read and
                                            // write permission
-  bool fork_;                              // able to fork or not
-  bool exec_;                              // able to exec or not
   std::vector<handler_t> handler_funcs_;   // handler functions
   PtracePeek ptrace_peek_;  // a helper to peek into tracee's memory
 };

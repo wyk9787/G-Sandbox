@@ -52,7 +52,7 @@ void ParseConfig(std::string config_file) {
 }
 
 // Trace a process with child_pid
-void Trace(pid_t child_pid) {
+void Trace(pid_t child_pid, bool root) {
   // Now repeatedly resume and trace the program
   bool running = true;
   int last_signal = 0;
@@ -64,10 +64,12 @@ void Trace(pid_t child_pid) {
   FileDetector read_write_file_detector(read_write_file);
 
   // Set options for ptrace to stop at exec(), clone(), fork(), and vfork()
-  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL,
-                 PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE |
-                     PTRACE_O_TRACEVFORK) != -1)
-      << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
+  if (root) {
+    REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL,
+                   PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK |
+                       PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK) != -1)
+        << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
+  }
 
   bool done_first_exec = false;
   while (running) {
@@ -99,7 +101,6 @@ void Trace(pid_t child_pid) {
         continue;
       }
 
-      // TODO: Read permission?
       if (execable) {
         last_signal = 0;
       } else {
@@ -111,7 +112,22 @@ void Trace(pid_t child_pid) {
       // The program just called clone
 
       if (forkable) {
-        last_signal = 0;
+        pid_t new_child_pid;
+        REQUIRE(ptrace(PTRACE_GETEVENTMSG, child_pid, NULL,
+                       reinterpret_cast<void *>(&new_child_pid)) != -1)
+            << "ptrace PTRACE_GETEVENTMSG failed: " << strerror(errno);
+        INFO << new_child_pid;
+        sleep(1);
+        REQUIRE(ptrace(PTRACE_SYSCALL, new_child_pid, NULL, 0) != -1)
+            << "ptrace PTRACE_SYSCALL failed: " << strerror(errno);
+        /* pid_t new_tracer_pid = fork(); */
+        /* REQUIRE(new_tracer_pid != -1) << "fork failed"; */
+        /* if (new_tracer_pid == 0) { */
+        /*   Trace(new_child_pid, false); */
+        /*   exit(0); */
+        /* } else { */
+        /*   last_signal = 0; */
+        /* } */
       } else {
         ptrace_syscall.KillChild("The program is not allowed to fork");
       }
@@ -191,7 +207,7 @@ int main(int argc, char **argv) {
       REQUIRE(result == child_pid) << "waitpid failed: " << strerror(errno);
     } while (!WIFSTOPPED(status));
 
-    Trace(child_pid);
+    Trace(child_pid, true);
   }
 
   return 0;

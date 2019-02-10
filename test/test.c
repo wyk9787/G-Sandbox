@@ -25,7 +25,7 @@ int main() {
   int read_fd = open("/usr/local/include/test.h", O_RDONLY, 0);
 
   pid_t child_pid = fork();
-  if (child_pid == 0) {
+  if (child_pid == -1) {
     perror("fork");
     exit(2);
   } else if (child_pid != 0) {

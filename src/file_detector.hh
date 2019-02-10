@@ -15,7 +15,7 @@ class FileDetector {
     char* tmp;
     REQUIRE((tmp = realpath(".", NULL)) != NULL) << "realpath() failed: "
                                                  << strerror(errno);
-    cur_path_ = std::string(tmp);
+    cur_path_ = std::string(tmp) + "/";
 
     REQUIRE((tmp = realpath(whitelist.c_str(), NULL)) != NULL)
         << "realpath() failed: " << strerror(errno);
@@ -32,14 +32,9 @@ class FileDetector {
       file = cur_path_ + file;
     }
 
-    char* tmp_file;
-    REQUIRE((tmp_file = realpath(file.c_str(), NULL)) != NULL)
-        << "realpath() failed: " << strerror(errno);
-    std::string real_path(tmp_file);
-
     // If file is a subdirectory of whitelist_, then whitelist_ must be a
     // substring of file
-    if (real_path.find(whitelist_) != std::string::npos) {
+    if (file.find(whitelist_) != std::string::npos) {
       return true;
     } else {
       return false;

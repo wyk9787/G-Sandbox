@@ -54,7 +54,11 @@ class PtraceSyscall {
   void ChmodHandler(const std::vector<ull_t>& args) const;
   void ChownHandler(const std::vector<ull_t>& args) const;
   void LChownHandler(const std::vector<ull_t>& args) const;
-  void UmaskHandler(const std::vector<ull_t>& args) const;
+  void KillHandler(const std::vector<ull_t>& args) const;
+  void TkillHandler(const std::vector<ull_t>& args) const;
+  void TgkillHandler(const std::vector<ull_t>& args) const;
+  void RtSigqueueinfoHandler(const std::vector<ull_t>& args) const;
+  void RtTgsigqueueinfoHandler(const std::vector<ull_t>& args) const;
 
   pid_t child_pid_;  // child process's pid
   FileDetector

@@ -16,6 +16,7 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write)
       read_file_detector_(read),
       read_write_file_detector_(read_write),
       ptrace_peek_(child_pid) {
+  // Initilize handler_funcs_
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
                         &PtraceSyscall::DefaultHandler);
   handler_funcs_[SYS_open] = &PtraceSyscall::OpenHandler;
@@ -40,6 +41,12 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write)
   handler_funcs_[SYS_chmod] = &PtraceSyscall::ChmodHandler;
   handler_funcs_[SYS_chown] = &PtraceSyscall::ChownHandler;
   handler_funcs_[SYS_lchown] = &PtraceSyscall::LChownHandler;
+  handler_funcs_[SYS_kill] = &PtraceSyscall::KillHandler;
+  handler_funcs_[SYS_tkill] = &PtraceSyscall::TkillHandler;
+  handler_funcs_[SYS_tgkill] = &PtraceSyscall::TgkillHandler;
+  handler_funcs_[SYS_rt_sigqueueinfo] = &PtraceSyscall::RtSigqueueinfoHandler;
+  handler_funcs_[SYS_rt_tgsigqueueinfo] =
+      &PtraceSyscall::RtTgsigqueueinfoHandler;
 }
 
 void PtraceSyscall::ProcessSyscall(int sys_num,
@@ -66,8 +73,9 @@ void PtraceSyscall::FileReadPermissionCheck(const string &file) const {
 void PtraceSyscall::FileReadWritePermissionCheck(const string &file) const {
   if (read_write_file_detector_.IsAllowed(file)) {
     INFO << "The file is granted read-write permission";
+  } else {
+    KillChild("The file is not granted read-write permission");
   }
-  KillChild("The file is not granted read-write permission");
 }
 
 void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) const {
@@ -260,9 +268,46 @@ void PtraceSyscall::LChownHandler(const std::vector<ull_t> &args) const {
   FileReadWritePermissionCheck(file);
 }
 
-void PtraceSyscall::UmaskHandler(const std::vector<ull_t> &args) const {
+void PtraceSyscall::KillHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
-  INFO << "The program calls umask(" << rdi << ")";
-  // TODO: Check this or not? It's related to the process
-  /* FileReadWritePermissionCheck(file); */
+  ull_t rsi = args[RSI];
+  INFO << "The program calls kill(" << rdi << ", " << rsi << ")";
+  KillChild("The program is not allowed to send signals");
+}
+
+void PtraceSyscall::TkillHandler(const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  INFO << "The program calls tkill(" << rdi << ", " << rsi << ")";
+  KillChild("The program is not allowed to send signals");
+}
+
+void PtraceSyscall::TgkillHandler(const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  ull_t rdx = args[RDX];
+  INFO << "The program calls tgkill(" << rdi << ", " << rsi << ", " << rdx
+       << ")";
+  KillChild("The program is not allowed to send signals");
+}
+
+void PtraceSyscall::RtSigqueueinfoHandler(
+    const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  ull_t rdx = args[RDX];
+  INFO << "The program calls rt_sigqueueinfo(" << rdi << ", " << rsi << ", "
+       << rdx << ")";
+  KillChild("The program is not allowed to send signals");
+}
+
+void PtraceSyscall::RtTgsigqueueinfoHandler(
+    const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  ull_t rdx = args[RDX];
+  ull_t r10 = args[R10];
+  INFO << "The program calls rt_tgsigqueueinfo(" << rdi << ", " << rsi << ", "
+       << rdx << ", " << r10 << ")";
+  KillChild("The program is not allowed to send signals");
 }

@@ -55,20 +55,15 @@ void Trace(pid_t child_pid) {
   int last_signal = 0;
   int status;
   size_t total_times = 0;
-  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file, execable,
-                               forkable);
+  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file);
   FileDetector read_file_detector(read_file);
   FileDetector read_write_file_detector(read_write_file);
 
   // Set options for ptrace to stop at exec(), clone(), fork(), and vfork()
-  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEEXEC) != -1)
-      << "ptrace PTRACE_O_TRACEEXEC failed: " << strerror(errno);
-  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACECLONE) != -1)
-      << "ptrace PTRACE_O_TRACECLONE failed: " << strerror(errno);
-  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEFORK) != -1)
-      << "ptrace PTRACE_O_TRACEFORK failed: " << strerror(errno);
-  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL, PTRACE_O_TRACEVFORK) != -1)
-      << "ptrace PTRACE_O_TRACEVFORK failed: " << strerror(errno);
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL,
+                 PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE |
+                     PTRACE_O_TRACEVFORK) != -1)
+      << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
 
   bool done_first_exec = false;
   while (running) {
@@ -84,12 +79,12 @@ void Trace(pid_t child_pid) {
                                                          << strerror(errno);
 
     if (WIFEXITED(status)) {
-      printf("Child exited with status %d\n", WEXITSTATUS(status));
+      INFO << "Child exited with status " << WEXITSTATUS(status);
       running = false;
     } else if (WIFSIGNALED(status)) {
-      printf("Child terminated with signal %d\n", WTERMSIG(status));
+      INFO << "Child terminated with signal" << WTERMSIG(status);
       running = false;
-    } else if (status >> 8 == PTRACE_EXEC_STATUS) {
+    } else if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
       // The program just runs execv
 
       // If the tracee hasn't run the first exec that execs the actual program
@@ -142,10 +137,6 @@ void Trace(pid_t child_pid) {
         // Get the system call number
         size_t syscall_num = regs.orig_rax;
 
-        // Print the systam call number and register values
-        // The meanings of registers will depend on the system call.
-        // Refer to the table at https://filippo.io/linux-syscall-table/
-        printf("Program made system call %lu.\n", syscall_num);
         std::vector<unsigned long long> args = {regs.rdi, regs.rsi, regs.rdx,
                                                 regs.r10, regs.r8,  regs.r9};
 

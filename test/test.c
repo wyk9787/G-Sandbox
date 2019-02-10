@@ -21,8 +21,8 @@ int main() {
   mprotect(test_mmap, 4096, PROT_NONE);
 
   // Run a few system calls that are not allowed
-  int write_fd = open("/usr/local/include/test.h", O_WRONLY, 0);
   int read_fd = open("/usr/local/include/test.h", O_RDONLY, 0);
+  int write_fd = open("/usr/local/include/test.h", O_WRONLY, 0);
 
   pid_t child_pid = fork();
   if (child_pid == -1) {

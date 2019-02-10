@@ -12,27 +12,18 @@
 // This class detects if a file is allowed by the sandbox
 class FileDetector {
  public:
-  FileDetector(std::string whitelist) {
-    if (whitelist.empty()) {
-      always_denied_ = true;
-      return;
-    }
-
+  FileDetector(std::string whitelist) : whitelist_(whitelist) {
     char* tmp;
     REQUIRE((tmp = realpath(".", NULL)) != NULL) << "realpath() failed: "
                                                  << strerror(errno);
     cur_path_ = std::string(tmp) + "/";
-
-    REQUIRE((tmp = realpath(whitelist.c_str(), NULL)) != NULL)
-        << "realpath() failed: " << strerror(errno);
-    whitelist_ = std::string(tmp);
     free(tmp);
   }
 
   // Decide if the file _file_ is a subdirectory of the whitelist
   // _file_ can be a relative or absolute path
   bool IsAllowed(std::string file) const {
-    if (always_denied_) {
+    if (whitelist_.empty()) {
       return false;
     }
 
@@ -54,8 +45,6 @@ class FileDetector {
   std::string cur_path_;  // current path
   std::string
       whitelist_;  // directory and its subdirectory permitted to read or write
-  bool always_denied_ = false;  // if the whitelist is empty, then any
-                                // permission check returns false
 };
 
 #endif  // FILE_DETECTOR_HH

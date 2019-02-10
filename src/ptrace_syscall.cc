@@ -90,9 +90,9 @@ void PtraceSyscall::OpenHandler(const std::vector<ull_t> &args) const {
 
   if (rsi & (O_WRONLY | O_RDWR)) {
     FileReadWritePermissionCheck(file);
+  } else {
+    FileReadPermissionCheck(file);
   }
-
-  FileReadPermissionCheck(file);
 }
 
 void PtraceSyscall::StatHandler(const std::vector<ull_t> &args) const {
@@ -144,7 +144,10 @@ void PtraceSyscall::ExecveHandler(const std::vector<ull_t> &args) const {
   ull_t rdi = args[RDI];
   ull_t rsi = args[RSI];
   ull_t rdx = args[RDX];
-  std::string file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
+  std::string file = "";
+  if (rdi != 0) {
+    file = ptrace_peek_[reinterpret_cast<void *>(rdi)];
+  }
   INFO << "The program calls execve(" << file << ", " << rsi << ", " << rdx
        << ")";
 }

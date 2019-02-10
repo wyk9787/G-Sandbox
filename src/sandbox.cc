@@ -8,8 +8,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <libconfig.h++>
+#include <unordered_map>
 
-#include "file_detector.hh"
 #include "log.h"
 #include "ptrace_syscall.hh"
 
@@ -52,44 +52,67 @@ void ParseConfig(std::string config_file) {
 }
 
 // Trace a process with child_pid
-void Trace(pid_t child_pid, bool root) {
-  // Now repeatedly resume and trace the program
-  bool running = true;
+void Trace(pid_t child_pid) {
+  // Keep track of what's the last signal intercepted
   int last_signal = 0;
+
+  // child status from waitpid
   int status;
+
+  // Keep track of total run times to aovid duplicated system call signal
   size_t total_times = 0;
-  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file,
+
+  // Keep track of how many tracess processes are running
+  size_t total_process_running = 1;
+
+  // The pid of the current child process that is stopped by the tracer
+  pid_t cur_child_pid = child_pid;
+
+  // A flag to check if the first tracee' exec has been run or not
+  bool done_first_exec = false;
+
+  // A flag to check if the previous run has a quited tracee
+  bool process_quit = false;
+
+  // A lookup table to eastablish mapping between tracee process pid and its
+  // index in ptrace_syscalls
+  std::unordered_map<pid_t, int> ptrace_syscall_lookup_table = {{child_pid, 0}};
+
+  // A vector of PtraceSyscall libraries that are used to intecept system calls
+  std::vector<PtraceSyscall> ptrace_syscalls;
+  ptrace_syscalls.emplace_back(child_pid, read_file, read_write_file,
                                socketable);
-  FileDetector read_file_detector(read_file);
-  FileDetector read_write_file_detector(read_write_file);
 
   // Set options for ptrace to stop at exec(), clone(), fork(), and vfork()
-  if (root) {
-    REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL,
-                   PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK |
-                       PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK) != -1)
-        << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
-  }
+  REQUIRE(ptrace(PTRACE_SETOPTIONS, child_pid, NULL,
+                 PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE |
+                     PTRACE_O_TRACEVFORK) != -1)
+      << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
 
-  bool done_first_exec = false;
-  while (running) {
+  // If there is at least tracee running, keep looping
+  while (total_process_running) {
     // Continue the process, delivering the last signal we received (if any)
-    REQUIRE(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) != -1)
-        << "ptrace PTRACE_SYSCALL failed: " << strerror(errno);
+    if (!process_quit) {
+      REQUIRE(ptrace(PTRACE_SYSCALL, cur_child_pid, NULL, last_signal) != -1)
+          << "ptrace PTRACE_SYSCALL failed: " << strerror(errno);
+    }
+    process_quit = false;
 
     // No signal to send yet
     last_signal = 0;
 
     // Wait for the child to stop again
-    REQUIRE(waitpid(child_pid, &status, 0) == child_pid) << "waitpid failed: "
-                                                         << strerror(errno);
+    REQUIRE((cur_child_pid = waitpid(-1, &status, 0)) != -1)
+        << "waitpid failed: " << strerror(errno);
 
     if (WIFEXITED(status)) {
       INFO << "Child exited with status " << WEXITSTATUS(status);
-      running = false;
+      total_process_running--;
+      process_quit = true;
     } else if (WIFSIGNALED(status)) {
       INFO << "Child terminated with signal" << WTERMSIG(status);
-      running = false;
+      total_process_running--;
+      process_quit = true;
     } else if (status >> 8 == PTRACE_EXEC_STATUS) {
       // The program just runs execv
 
@@ -104,7 +127,8 @@ void Trace(pid_t child_pid, bool root) {
       if (execable) {
         last_signal = 0;
       } else {
-        ptrace_syscall.KillChild("The program is not allowed to exec");
+        ptrace_syscalls[ptrace_syscall_lookup_table[cur_child_pid]].KillChild(
+            "The program is not allowed to exec");
       }
     } else if (status >> 8 == PTRACE_FORK_STATUS ||
                status >> 8 == PTRACE_CLONE_STATUS ||
@@ -113,23 +137,37 @@ void Trace(pid_t child_pid, bool root) {
 
       if (forkable) {
         pid_t new_child_pid;
-        REQUIRE(ptrace(PTRACE_GETEVENTMSG, child_pid, NULL,
+
+        // Get the new process id forked by tracee
+        REQUIRE(ptrace(PTRACE_GETEVENTMSG, cur_child_pid, NULL,
                        reinterpret_cast<void *>(&new_child_pid)) != -1)
             << "ptrace PTRACE_GETEVENTMSG failed: " << strerror(errno);
-        INFO << new_child_pid;
-        sleep(1);
+
+        // For some reasons, we have to wait at least a bit to allowed the new
+        // process to be stopped
+        usleep(5000);
+
+        // Now start tracing the new process
         REQUIRE(ptrace(PTRACE_SYSCALL, new_child_pid, NULL, 0) != -1)
             << "ptrace PTRACE_SYSCALL failed: " << strerror(errno);
-        /* pid_t new_tracer_pid = fork(); */
-        /* REQUIRE(new_tracer_pid != -1) << "fork failed"; */
-        /* if (new_tracer_pid == 0) { */
-        /*   Trace(new_child_pid, false); */
-        /*   exit(0); */
-        /* } else { */
-        /*   last_signal = 0; */
-        /* } */
+
+        // Update our book keeping data structures
+        ptrace_syscall_lookup_table.insert(
+            {new_child_pid, ptrace_syscalls.size()});
+        ptrace_syscalls.emplace_back(new_child_pid, read_file, read_write_file,
+                                     socketable);
+
+        // Set options for ptrace to stop at exec(), clone(), fork(), and
+        // vfork()
+        REQUIRE(ptrace(PTRACE_SETOPTIONS, cur_child_pid, NULL,
+                       PTRACE_O_TRACEEXEC | PTRACE_O_TRACEFORK |
+                           PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK) != -1)
+            << "ptrace PTRACE_SETOPTIONS failed: " << strerror(errno);
+        total_process_running++;
+        last_signal = 0;
       } else {
-        ptrace_syscall.KillChild("The program is not allowed to fork");
+        ptrace_syscalls[ptrace_syscall_lookup_table[cur_child_pid]].KillChild(
+            "The program is not allowed to fork");
       }
     } else if (WIFSTOPPED(status)) {
       // Get the signal delivered to the child
@@ -151,7 +189,7 @@ void Trace(pid_t child_pid, bool root) {
         }
         // Read register state from the child process
         struct user_regs_struct regs;
-        REQUIRE(ptrace(PTRACE_GETREGS, child_pid, NULL, &regs) != -1)
+        REQUIRE(ptrace(PTRACE_GETREGS, cur_child_pid, NULL, &regs) != -1)
             << "ptrace PTRACE_GETREGS failed: " << strerror(errno);
 
         // Get the system call number
@@ -160,7 +198,8 @@ void Trace(pid_t child_pid, bool root) {
         std::vector<unsigned long long> args = {regs.rdi, regs.rsi, regs.rdx,
                                                 regs.r10, regs.r8,  regs.r9};
 
-        ptrace_syscall.ProcessSyscall(syscall_num, args);
+        ptrace_syscalls[ptrace_syscall_lookup_table[cur_child_pid]]
+            .ProcessSyscall(syscall_num, args);
       }
     }
   }
@@ -207,7 +246,7 @@ int main(int argc, char **argv) {
       REQUIRE(result == child_pid) << "waitpid failed: " << strerror(errno);
     } while (!WIFSTOPPED(status));
 
-    Trace(child_pid, true);
+    Trace(child_pid);
   }
 
   return 0;

@@ -11,10 +11,12 @@
 
 using std::string;
 
-PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write)
+PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
+                             bool socketable)
     : child_pid_(child_pid),
       read_file_detector_(read),
       read_write_file_detector_(read_write),
+      socket_(socketable),
       ptrace_peek_(child_pid) {
   // Initilize handler_funcs_
   handler_funcs_.insert(handler_funcs_.begin(), /*total_num_of_syscalls=*/314,
@@ -115,6 +117,9 @@ void PtraceSyscall::SocketHandler(const std::vector<ull_t> &args) const {
   ull_t rdx = args[RDX];
   INFO << "The program calls socket(" << rdi << ", " << rsi << ", " << rdx
        << ")";
+  if (!socket_) {
+    KillChild("The program is not allowed to perform socket operations");
+  }
 }
 
 void PtraceSyscall::CloneHandler(const std::vector<ull_t> &args) const {

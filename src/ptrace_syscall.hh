@@ -21,7 +21,8 @@ class PtraceSyscall {
       void (PtraceSyscall::*)(const std::vector<ull_t>& args) const;
 
  public:
-  PtraceSyscall(pid_t child_pid, std::string read, std::string read_write);
+  PtraceSyscall(pid_t child_pid, std::string read, std::string read_write,
+                bool socketable);
 
   void ProcessSyscall(int sys_num, const std::vector<ull_t>& args);
   void KillChild(std::string exit_message) const;
@@ -65,6 +66,7 @@ class PtraceSyscall {
       read_file_detector_;  // a file detector to decide read permission
   FileDetector read_write_file_detector_;  // a file detector to decide read and
                                            // write permission
+  bool socket_;                            // able to do socket operation or not
   std::vector<handler_t> handler_funcs_;   // handler functions
   PtracePeek ptrace_peek_;  // a helper to peek into tracee's memory
 };

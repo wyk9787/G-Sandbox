@@ -18,13 +18,17 @@
 #define PTRACE_FORK_STATUS (SIGTRAP | (PTRACE_EVENT_FORK << 8))
 #define PTRACE_VFORK_STATUS (SIGTRAP | (PTRACE_EVENT_VFORK << 8))
 
-using namespace libconfig;
+using libconfig::Config;
+using libconfig::FileIOException;
+using libconfig::ParseException;
 
 static std::string read_file = "";
 static std::string read_write_file = "";
 static bool forkable = false;
 static bool execable = false;
+static bool socketable = false;
 
+// Parse restrictions flags from configuration file
 void ParseConfig(std::string config_file) {
   Config cfg;
 
@@ -32,20 +36,19 @@ void ParseConfig(std::string config_file) {
   try {
     cfg.readFile(config_file.c_str());
   } catch (const FileIOException &fioex) {
-    std::cerr << "I/O error while reading file." << std::endl;
-    exit(EXIT_FAILURE);
+    FATAL << "I/O error while reading file.";
   } catch (const ParseException &pex) {
-    std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
-              << " - " << pex.getError() << std::endl;
-    exit(EXIT_FAILURE);
+    FATAL << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - "
+          << pex.getError();
   }
 
   // Parse variables
   // If variable name cannot be found, passed in variables witll not be changed
   cfg.lookupValue("read", read_file);
   cfg.lookupValue("read_write", read_write_file);
-  cfg.lookupValue("exec", forkable);
-  cfg.lookupValue("fork", execable);
+  cfg.lookupValue("fork", forkable);
+  cfg.lookupValue("exec", execable);
+  cfg.lookupValue("socket", socketable);
 }
 
 // Trace a process with child_pid
@@ -55,7 +58,8 @@ void Trace(pid_t child_pid) {
   int last_signal = 0;
   int status;
   size_t total_times = 0;
-  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file);
+  PtraceSyscall ptrace_syscall(child_pid, read_file, read_write_file,
+                               socketable);
   FileDetector read_file_detector(read_file);
   FileDetector read_write_file_detector(read_write_file);
 

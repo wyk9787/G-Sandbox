@@ -11,11 +11,12 @@
 
 #include "log.h"
 
+// This class provides a method to peek into trace's memory and read its data
 class PtracePeek {
  public:
   PtracePeek(pid_t child_pid) : child_pid_(child_pid){};
 
-  // Peek into tracee's program and read a string out of address addr
+  // Peek into tracee's program and read a string out of address _addr_
   std::string operator[](void* addr) const {
     size_t num_count = 0;
     char str[100];
@@ -45,7 +46,7 @@ class PtracePeek {
   }
 
  private:
-  pid_t child_pid_;
+  pid_t child_pid_;  // tracee's pid
 };
 
 #endif  // PTRACE_PEEK_HH

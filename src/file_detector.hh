@@ -9,6 +9,7 @@
 
 #include "log.h"
 
+// This class detects if a file is allowed by the sandbox
 class FileDetector {
  public:
   FileDetector(std::string whitelist) {
@@ -23,6 +24,8 @@ class FileDetector {
     free(tmp);
   }
 
+  // Decide if the file _file_ is a subdirectory of the whitelist
+  // _file_ can be a relative or absolute path
   bool IsAllowed(std::string file) const {
     // If there is no allowed directory, then always false
     if (whitelist_.empty()) return false;
@@ -42,8 +45,9 @@ class FileDetector {
   }
 
  private:
-  std::string cur_path_;
-  std::string whitelist_;
+  std::string cur_path_;  // current path
+  std::string
+      whitelist_;  // directory and its subdirectory permitted to read or write
 };
 
 #endif  // FILE_DETECTOR_HH

@@ -15,6 +15,8 @@
 #define R10 3
 #define R8 4
 
+// This class processes the system calls we intercepted and based on the given
+// permission, decide to either kill the tracee program or let it continue
 class PtraceSyscall {
   using ull_t = unsigned long long;
   using handler_t =
@@ -24,15 +26,25 @@ class PtraceSyscall {
   PtraceSyscall(pid_t child_pid, std::string read, std::string read_write,
                 bool socketable);
 
+  // Process the _sys_num_ system call with argument _args_
   void ProcessSyscall(int sys_num, const std::vector<ull_t>& args);
+
+  // Kills the tracee program with error message _exit_message_
   void KillChild(std::string exit_message) const;
 
  private:
+  // A placeholder handler function for system calls we do not intercept
   void DefaultHandler(const std::vector<ull_t>& args) const {}
 
+  // Checks if the sandbox allows the file _file_ to be read
+  // If not, kill the tracee program and reports the error
   void FileReadPermissionCheck(const std::string& file) const;
+
+  // Checks if the sandbox allows the file _file_ to be read and write
+  // If not, kill the tracee program and reports the error
   void FileReadWritePermissionCheck(const std::string& file) const;
 
+  // Handlers for intercepted system calls
   void OpenHandler(const std::vector<ull_t>& args) const;
   void StatHandler(const std::vector<ull_t>& args) const;
   void LStatHandler(const std::vector<ull_t>& args) const;

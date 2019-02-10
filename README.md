@@ -1,5 +1,7 @@
 # G-Sandbox
 
+This is a toy C++ sandbox tool that restricts certain system calls based on given permission. It will not only sandbox the program it runs but also any of its child processes.
+
 ## Required library
 
 * [libconfig](https://github.com/hyperrealm/libconfig): C/C++ library for processing configuration files 

@@ -88,7 +88,7 @@ void Trace(pid_t child_pid) {
     } else if (WIFSIGNALED(status)) {
       INFO << "Child terminated with signal" << WTERMSIG(status);
       running = false;
-    } else if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
+    } else if (status >> 8 == PTRACE_EXEC_STATUS) {
       // The program just runs execv
 
       // If the tracee hasn't run the first exec that execs the actual program

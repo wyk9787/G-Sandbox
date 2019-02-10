@@ -13,6 +13,11 @@
 class FileDetector {
  public:
   FileDetector(std::string whitelist) {
+    if (whitelist.empty()) {
+      always_denied_ = true;
+      return;
+    }
+
     char* tmp;
     REQUIRE((tmp = realpath(".", NULL)) != NULL) << "realpath() failed: "
                                                  << strerror(errno);
@@ -27,8 +32,9 @@ class FileDetector {
   // Decide if the file _file_ is a subdirectory of the whitelist
   // _file_ can be a relative or absolute path
   bool IsAllowed(std::string file) const {
-    // If there is no allowed directory, then always false
-    if (whitelist_.empty()) return false;
+    if (always_denied_) {
+      return false;
+    }
 
     // If file is a relative path, make it absolute
     if (file[0] == '.' || file[0] != '/' || file[0] == '.') {
@@ -48,6 +54,8 @@ class FileDetector {
   std::string cur_path_;  // current path
   std::string
       whitelist_;  // directory and its subdirectory permitted to read or write
+  bool always_denied_ = false;  // if the whitelist is empty, then any
+                                // permission check returns false
 };
 
 #endif  // FILE_DETECTOR_HH

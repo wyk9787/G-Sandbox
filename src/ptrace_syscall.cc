@@ -117,7 +117,9 @@ void PtraceSyscall::SocketHandler(const std::vector<ull_t> &args) const {
   ull_t rdx = args[RDX];
   INFO << "The program calls socket(" << rdi << ", " << rsi << ", " << rdx
        << ")";
-  if (!socket_) {
+  if (socket_) {
+    INFO << "The program is granted socket permission.";
+  } else {
     KillChild("The program is not allowed to perform socket operations");
   }
 }

@@ -39,6 +39,8 @@ make MACRO=NDEBUG
 
 ## Restrictions 
 
+The following operations are not allowed:
+
 * Changing the current directory
 
 * Creating or removing directories
@@ -116,6 +118,9 @@ to run (e.g. `open`)
 ```
 export LD_LIBRARY_PATH=/usr/local/lib
 make clean all  # (re)build G-Sandbox
+
+# You can also add NDEBUG macro to suppress logging to the console
+make clean all MACRO=NDEBUG
 
 cd test 
 make clean all  # (re)build test program

@@ -20,6 +20,8 @@ processing configuration files
 * pkg-config: tool to find right library path for libconfig
    
    `sudo apt-get install pkg-config`
+   
+   (Or you can manually include the library path and required linking flag in Makefile. See [libconfig](https://github.com/hyperrealm/libconfig) for detail)
 
 ## Example Usage 
 
@@ -38,6 +40,8 @@ make MACRO=NDEBUG
 ```
 
 ## Restrictions 
+
+The following operations are not allowed:
 
 * Changing the current directory
 
@@ -116,6 +120,9 @@ to run (e.g. `open`)
 ```
 export LD_LIBRARY_PATH=/usr/local/lib
 make clean all  # (re)build G-Sandbox
+
+# You can also add NDEBUG macro to suppress logging to the console
+make clean all MACRO=NDEBUG
 
 cd test 
 make clean all  # (re)build test program

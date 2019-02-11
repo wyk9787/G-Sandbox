@@ -20,6 +20,8 @@ processing configuration files
 * pkg-config: tool to find right library path for libconfig
    
    `sudo apt-get install pkg-config`
+   
+   (Or you can manually include the library path and required linking flag in Makefile. See [libconfig](https://github.com/hyperrealm/libconfig) for detail)
 
 ## Example Usage 
 

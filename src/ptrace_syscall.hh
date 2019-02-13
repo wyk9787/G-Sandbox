@@ -72,6 +72,7 @@ class PtraceSyscall {
   void TgkillHandler(const std::vector<ull_t>& args) const;
   void RtSigqueueinfoHandler(const std::vector<ull_t>& args) const;
   void RtTgsigqueueinfoHandler(const std::vector<ull_t>& args) const;
+  void OpenatHandler(const std::vector<ull_t>& args) const;
 
   pid_t child_pid_;  // child process's pid
   FileDetector

@@ -49,6 +49,7 @@ PtraceSyscall::PtraceSyscall(pid_t child_pid, string read, string read_write,
   handler_funcs_[SYS_rt_sigqueueinfo] = &PtraceSyscall::RtSigqueueinfoHandler;
   handler_funcs_[SYS_rt_tgsigqueueinfo] =
       &PtraceSyscall::RtTgsigqueueinfoHandler;
+  handler_funcs_[SYS_openat] = &PtraceSyscall::OpenatHandler;
 }
 
 void PtraceSyscall::ProcessSyscall(int sys_num,
@@ -320,4 +321,14 @@ void PtraceSyscall::RtTgsigqueueinfoHandler(
   INFO << "The program calls rt_tgsigqueueinfo(" << rdi << ", " << rsi << ", "
        << rdx << ", " << r10 << ")";
   KillChild("The program is not allowed to send signals");
+}
+
+void PtraceSyscall::OpenatHandler(const std::vector<ull_t> &args) const {
+  ull_t rdi = args[RDI];
+  ull_t rsi = args[RSI];
+  ull_t rdx = args[RDX];
+  std::string file = ptrace_peek_[reinterpret_cast<void *>(rsi)];
+  INFO << "The program calls openat(" << rdi << ", " << file << ", " << rdx
+       << ")";
+  KillChild("The program is not allowed to call openat(). Use open() instead");
 }

@@ -173,6 +173,10 @@ is not in `/lib/` or its subdirectories. We also see that the previous `open`
 call to read any shared libraries under `/lib/` and its subdirectories are
 allowed.
 
+* `./sandbox test/test7.cfg -- test/test`
+
+  This configure file tests multiple permitted read or read write directories.
+
 ## Reference & Acknowledgement
 
 * [log.h](src/log.h) is borrowed from [Coz](https://github.com/plasma-umass/coz)

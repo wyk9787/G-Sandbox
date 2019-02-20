@@ -132,39 +132,39 @@ cd ..
 
 ### Testing
 
-* `./sandbox -- test/test`
+* `./g-sandbox -- test/test`
 
    The program is not given any priviledge. Thus, the program stopped at the
 first system call(e.g. `open`).
 
-* `./sandbox test/test1.cfg -- test/test`
+* `./g-sandbox test/test1.cfg -- test/test`
 
    The program is given priviledge to read and write any file. The program is
 stopped at `fork` because it does not have any fork priviledge.
 
-* `./sandbox test/test2.cfg -- test/test`
+* `./g-sandbox test/test2.cfg -- test/test`
 
    The program is given priviledge to read and write any file, and also create
 child process. The program is stopped at `execve` because it does not have any 
 exec priviledge.
 
-* `./sandbox test/test3.cfg -- test/test`
+* `./g-sandbox test/test3.cfg -- test/test`
 
    The program is given priviledge to read and write any file, and also create
 child process and exec. The program is stopped at `socket` because it does not have any 
 internet priviledge.
 
-* `./sandbox test/test4.cfg -- test/test`
+* `./g-sandbox test/test4.cfg -- test/test`
 
    The program has full priviledge so the program successfully finishes.
 
-* `./sandbox test/test5.cfg -- test/test`
+* `./g-sandbox test/test5.cfg -- test/test`
 
    The program has full priviledge besides `read` is set to a specific
 directory. Since `read-write` is set to root directory, all files should be
 able to be read.
 
-* `./sandbox test/test6.cfg -- test/test`
+* `./g-sandbox test/test6.cfg -- test/test`
 
   The program has priviledge to `fork`, `exec` and `socket` and read any file
 on the system. However, it only has privilegde to write in `/lib/`. Thus, the
@@ -173,7 +173,7 @@ is not in `/lib/` or its subdirectories. We also see that the previous `open`
 call to read any shared libraries under `/lib/` and its subdirectories are
 allowed.
 
-* `./sandbox test/test7.cfg -- test/test`
+* `./g-sandbox test/test7.cfg -- test/test`
 
   This configure file tests multiple permitted read or read write directories.
 

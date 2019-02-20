@@ -22,8 +22,8 @@ class logger_base {
 
 class logger : public logger_base {
  private:
-  bool _done;
   bool _exit;
+  bool _done;
 
  public:
   logger(bool exit = false, bool done = true) : _exit(exit), _done(done) {}

@@ -1,5 +1,5 @@
 CXX       	 := clang++
-CXXFLAGS 	   := -std=c++11
+CXXFLAGS 	   := -std=c++11 -g -Wall
 SRC_DIR      := ./src
 MACRO        := DEBUG
 TEST_DIR     := ./test
@@ -7,7 +7,6 @@ TARGET       := g-sandbox
 SRC          := $(SRC_DIR)/sandbox.cc $(SRC_DIR)/ptrace_syscall.cc
 
 OBJECTS      := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
-TEST_MCF		 := $(TEST_DIR)/mcf/mcf_base.clang $(TEST_DIR)/mcf/train_inp.in	
 
 .PHONY: all test clean 
 	

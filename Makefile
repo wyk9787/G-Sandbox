@@ -3,7 +3,7 @@ CXXFLAGS 	   := -std=c++11
 SRC_DIR      := ./src
 MACRO        := DEBUG
 TEST_DIR     := ./test
-TARGET       := sandbox
+TARGET       := g-sandbox
 SRC          := $(SRC_DIR)/sandbox.cc $(SRC_DIR)/ptrace_syscall.cc
 
 OBJECTS      := $(SRC:%.cpp=$(OBJ_DIR)/%.o)

@@ -143,14 +143,6 @@ void Trace(pid_t child_pid) {
                        reinterpret_cast<void *>(&new_child_pid)) != -1)
             << "ptrace PTRACE_GETEVENTMSG failed: " << strerror(errno);
 
-        // For some reasons, we have to wait at least a bit to allowed the new
-        // process to be stopped
-        usleep(5000);
-
-        // Now start tracing the new process
-        REQUIRE(ptrace(PTRACE_SYSCALL, new_child_pid, NULL, 0) != -1)
-            << "ptrace PTRACE_SYSCALL failed: " << strerror(errno);
-
         // Update our book keeping data structures
         ptrace_syscall_lookup_table.insert(
             {new_child_pid, ptrace_syscalls.size()});
